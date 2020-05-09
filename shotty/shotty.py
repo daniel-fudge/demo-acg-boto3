@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import click
 
 
@@ -64,9 +65,16 @@ def instances():
 def create_snapshots(project):
     "Create snapshots for EC2 instances"
     for i in filter_instances(project):
+        print("Stopping {}...".format(i.id))
+        i.stop()
+        i.wait_until_stopped()
         for v in i.volumes.all():
             print("Creating snapshot of {}".format(v.id))
             v.create_snapshot(Description="Created by shotty.")
+        print("Starting {}...".format(i.id))
+        i.start()
+        i.wait_until_running()
+    print("Job is done!")
     return
 
 
@@ -91,7 +99,11 @@ def stop_instances(project):
     """Stop EC2 instances."""
     for i in filter_instances(project):
         print("Stopping {}...".format(i.id))
-        i.stop()
+        try:
+            i.stop()
+        except botocore.exceptions.ClientError as e:
+            print(" Could not stop (). ".format(i.id) + str(e))
+            continue
     return
 
 
@@ -102,7 +114,11 @@ def start_instances(project):
     """Start EC2 instances."""
     for i in filter_instances(project):
         print("Starting {}...".format(i.id))
-        i.start()
+        try:
+            i.start()
+        except botocore.exceptions.ClientError as e:
+            print(" Could not start (). ".format(i.id) + str(e))
+            continue
     return
 
 
